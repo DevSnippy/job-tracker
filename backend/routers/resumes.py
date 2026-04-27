@@ -25,6 +25,16 @@ class ResumeOut(BaseModel):
         from_attributes = True
 
 
+class ResumeDetailOut(ResumeOut):
+    content: str = ""
+
+
+class ResumeCreate(BaseModel):
+    name: str
+    template: str = "Vanguard"
+    resume_data: dict = {}
+
+
 class ResumeUpdate(BaseModel):
     name: Optional[str] = None
     template: Optional[str] = None
@@ -39,11 +49,30 @@ async def list_resumes(db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 
 
-@router.get("/{resume_id}", response_model=ResumeOut)
+@router.get("/{resume_id}", response_model=ResumeDetailOut)
 async def get_resume(resume_id: str, db: AsyncSession = Depends(get_db)):
     r = await db.get(ResumeModel, resume_id)
     if not r:
         raise HTTPException(404, "Resume not found")
+    return r
+
+
+@router.post("", response_model=ResumeOut, status_code=201)
+async def create_resume(body: ResumeCreate, db: AsyncSession = Depends(get_db)):
+    r = ResumeModel(
+        id=f"r{uuid.uuid4().hex[:8]}",
+        name=body.name,
+        template=body.template,
+        updated=datetime.now().strftime("%b %d"),
+        size="0 KB",
+        pages=1,
+        default=False,
+        tags=[],
+        resume_data=body.resume_data,
+    )
+    db.add(r)
+    await db.commit()
+    await db.refresh(r)
     return r
 
 

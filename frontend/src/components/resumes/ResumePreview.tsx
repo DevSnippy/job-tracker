@@ -1,5 +1,5 @@
 'use client';
-import type { ResumeData, Template } from '@/lib/types';
+import type { ResumeData, Template, EducationItem, ResumeLink } from '@/lib/types';
 
 interface ResumePreviewProps {
   template: Template;
@@ -22,6 +22,34 @@ function ExpItem({ e, serif, mono, minimal }: { e: ResumeData['experience'][0]; 
   );
 }
 
+function EduItem({ e }: { e: EducationItem }) {
+  return (
+    <div style={{ marginBottom: 6 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <div style={{ fontWeight: 700, fontSize: 10.5, color: '#111' }}>{e.degree}</div>
+        <div style={{ fontSize: 9, color: '#666' }}>{e.when}</div>
+      </div>
+      <div style={{ fontSize: 9.5, color: '#444' }}>{e.school}{e.loc ? ` — ${e.loc}` : ''}</div>
+    </div>
+  );
+}
+
+function LinksRow({ links, style }: { links?: ResumeLink[]; style?: React.CSSProperties }) {
+  const items = (links ?? []).filter(l => l.url);
+  if (!items.length) return null;
+  return (
+    <div style={style}>
+      {items.map((l, i) => (
+        <span key={i}>
+          {i > 0 && <span style={{ margin: '0 5px' }}>·</span>}
+          <span style={{ fontWeight: 600 }}>{l.label}:</span>{' '}
+          {l.url.replace(/^https?:\/\/(www\.)?/, '')}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function Section({ title, children, accent }: { title: string; children: React.ReactNode; accent: string }) {
   return (
     <div style={{ marginBottom: 14 }}>
@@ -40,9 +68,11 @@ export default function ResumePreview({ template: t, data, scale = 1 }: ResumePr
             <div style={{ fontSize: 20, fontWeight: 700, color: '#111' }}>{data.name}</div>
             <div style={{ fontSize: 10.5, color: '#444', marginTop: 2 }}>{data.title}</div>
             <div style={{ fontSize: 9, color: '#666', marginTop: 6, display: 'flex', gap: 10 }}><span>{data.email}</span><span>·</span><span>{data.phone}</span><span>·</span><span>{data.location}</span></div>
+            <LinksRow links={data.links} style={{ fontSize: 9, color: '#666', marginTop: 3 }} />
           </div>
           <Section title="Summary" accent={t.accent}><div style={{ fontSize: 9.5, lineHeight: 1.55, color: '#333' }}>{data.summary}</div></Section>
           <Section title="Experience" accent={t.accent}>{data.experience.map((e, i) => <ExpItem key={i} e={e} />)}</Section>
+          {(data.education ?? []).length > 0 && <Section title="Education" accent={t.accent}>{(data.education ?? []).map((e, i) => <EduItem key={i} e={e} />)}</Section>}
           <Section title="Skills" accent={t.accent}><div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>{data.skills.map(s => <span key={s} style={{ fontSize: 9, padding: '1px 6px', background: `${t.accent}15`, color: t.accent, borderRadius: 3, fontWeight: 500 }}>{s}</span>)}</div></Section>
         </div>
       );
@@ -52,9 +82,11 @@ export default function ResumePreview({ template: t, data, scale = 1 }: ResumePr
             <div style={{ fontSize: 24, fontWeight: 400, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#111' }}>{data.name}</div>
             <div style={{ fontSize: 10, fontStyle: 'italic', color: '#555', marginTop: 4 }}>{data.title}</div>
             <div style={{ fontSize: 9, color: '#666', marginTop: 6 }}>{data.email} · {data.phone} · {data.location}</div>
+            <LinksRow links={data.links} style={{ fontSize: 9, color: '#666', marginTop: 3 }} />
           </div>
           <Section title="Profile" accent={t.accent}><div style={{ fontSize: 10, lineHeight: 1.6, color: '#222' }}>{data.summary}</div></Section>
           <Section title="Experience" accent={t.accent}>{data.experience.map((e, i) => <ExpItem key={i} e={e} serif />)}</Section>
+          {(data.education ?? []).length > 0 && <Section title="Education" accent={t.accent}>{(data.education ?? []).map((e, i) => <EduItem key={i} e={e} />)}</Section>}
           <Section title="Skills" accent={t.accent}><div style={{ fontSize: 9.5, color: '#222' }}>{data.skills.join(' · ')}</div></Section>
         </div>
       );
@@ -62,9 +94,11 @@ export default function ResumePreview({ template: t, data, scale = 1 }: ResumePr
         <div style={{ fontFamily: '"Georgia", serif' }}>
           <div style={{ fontSize: 26, fontWeight: 400, color: '#111', letterSpacing: '-0.01em' }}>{data.name}</div>
           <div style={{ fontSize: 11, fontStyle: 'italic', color: t.accent, marginTop: 2, marginBottom: 2 }}>{data.title}</div>
-          <div style={{ fontSize: 9, color: '#666', marginBottom: 12 }}>{data.email} — {data.phone} — {data.location}</div>
+          <div style={{ fontSize: 9, color: '#666' }}>{data.email} — {data.phone} — {data.location}</div>
+          <LinksRow links={data.links} style={{ fontSize: 9, color: '#666', marginBottom: 12, marginTop: 2 }} />
           <Section title="Summary" accent={t.accent}><div style={{ fontSize: 10, lineHeight: 1.65, color: '#333', fontStyle: 'italic' }}>{data.summary}</div></Section>
           <Section title="Experience" accent={t.accent}>{data.experience.map((e, i) => <ExpItem key={i} e={e} serif />)}</Section>
+          {(data.education ?? []).length > 0 && <Section title="Education" accent={t.accent}>{(data.education ?? []).map((e, i) => <EduItem key={i} e={e} />)}</Section>}
           <Section title="Skills" accent={t.accent}><div style={{ fontSize: 9.5, color: '#333' }}>{data.skills.join(', ')}</div></Section>
         </div>
       );
@@ -75,7 +109,9 @@ export default function ResumePreview({ template: t, data, scale = 1 }: ResumePr
             <div style={{ fontSize: 9, opacity: 0.85, marginTop: 4 }}>{data.title}</div>
             <div style={{ borderTop: '1px solid rgba(255,255,255,.3)', marginTop: 14, paddingTop: 10 }}>
               <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Contact</div>
-              <div style={{ fontSize: 8.5, lineHeight: 1.7 }}><div>{data.email}</div><div>{data.phone}</div><div>{data.location}</div></div>
+              <div style={{ fontSize: 8.5, lineHeight: 1.7 }}><div>{data.email}</div><div>{data.phone}</div><div>{data.location}</div>
+                {(data.links ?? []).filter(l => l.url).map((l, i) => <div key={i}>{l.label}: {l.url.replace(/^https?:\/\/(www\.)?/, '')}</div>)}
+              </div>
             </div>
             <div style={{ marginTop: 14 }}>
               <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>Skills</div>
@@ -85,6 +121,7 @@ export default function ResumePreview({ template: t, data, scale = 1 }: ResumePr
           <div style={{ paddingLeft: 4 }}>
             <Section title="Summary" accent={t.accent}><div style={{ fontSize: 9.5, lineHeight: 1.55, color: '#333' }}>{data.summary}</div></Section>
             <Section title="Experience" accent={t.accent}>{data.experience.map((e, i) => <ExpItem key={i} e={e} />)}</Section>
+            {(data.education ?? []).length > 0 && <Section title="Education" accent={t.accent}>{(data.education ?? []).map((e, i) => <EduItem key={i} e={e} />)}</Section>}
           </div>
         </div>
       );
@@ -92,11 +129,16 @@ export default function ResumePreview({ template: t, data, scale = 1 }: ResumePr
         <div style={{ fontFamily: '"JetBrains Mono", monospace' }}>
           <div style={{ fontSize: 11, color: '#666' }}># {data.title}</div>
           <div style={{ fontSize: 22, fontWeight: 700, color: '#111', marginTop: 2 }}>{data.name}</div>
-          <div style={{ fontSize: 9, color: '#666', marginTop: 6, marginBottom: 12 }}>{data.email} / {data.phone} / {data.location}</div>
+          <div style={{ fontSize: 9, color: '#666', marginTop: 6 }}>{data.email} / {data.phone} / {data.location}</div>
+          <LinksRow links={data.links} style={{ fontSize: 9, color: '#666', marginTop: 2, marginBottom: 12, fontFamily: '"JetBrains Mono", monospace' }} />
           <div style={{ fontSize: 10, fontWeight: 700, color: t.accent, marginBottom: 4 }}>// summary</div>
           <div style={{ fontSize: 9.5, lineHeight: 1.6, color: '#222', marginBottom: 14 }}>{data.summary}</div>
           <div style={{ fontSize: 10, fontWeight: 700, color: t.accent, marginBottom: 4 }}>// experience</div>
           {data.experience.map((e, i) => <ExpItem key={i} e={e} mono />)}
+          {(data.education ?? []).length > 0 && <>
+            <div style={{ fontSize: 10, fontWeight: 700, color: t.accent, marginTop: 8, marginBottom: 4 }}>// education</div>
+            {(data.education ?? []).map((e, i) => <EduItem key={i} e={e} />)}
+          </>}
           <div style={{ fontSize: 10, fontWeight: 700, color: t.accent, marginTop: 8, marginBottom: 4 }}>// skills</div>
           <div style={{ fontSize: 9, color: '#222' }}>[{data.skills.map(s => `"${s}"`).join(', ')}]</div>
         </div>
@@ -105,10 +147,15 @@ export default function ResumePreview({ template: t, data, scale = 1 }: ResumePr
         <div>
           <div style={{ fontSize: 30, fontWeight: 300, color: '#111', letterSpacing: '-0.02em' }}>{data.name}</div>
           <div style={{ fontSize: 10.5, color: '#666', marginTop: 2, marginBottom: 2 }}>{data.title}</div>
-          <div style={{ fontSize: 9, color: '#999', marginBottom: 18 }}>{data.email} · {data.phone} · {data.location}</div>
+          <div style={{ fontSize: 9, color: '#999', marginBottom: 4 }}>{data.email} · {data.phone} · {data.location}</div>
+          <LinksRow links={data.links} style={{ fontSize: 9, color: '#999', marginBottom: 18 }} />
           <div style={{ fontSize: 9.5, lineHeight: 1.7, color: '#444', marginBottom: 18 }}>{data.summary}</div>
           <div style={{ fontSize: 10, fontWeight: 500, color: '#111', marginBottom: 6 }}>Experience</div>
           {data.experience.map((e, i) => <ExpItem key={i} e={e} minimal />)}
+          {(data.education ?? []).length > 0 && <>
+            <div style={{ fontSize: 10, fontWeight: 500, color: '#111', marginTop: 12, marginBottom: 6 }}>Education</div>
+            {(data.education ?? []).map((e, i) => <EduItem key={i} e={e} />)}
+          </>}
           <div style={{ fontSize: 10, fontWeight: 500, color: '#111', marginTop: 12, marginBottom: 4 }}>Skills</div>
           <div style={{ fontSize: 9, color: '#666' }}>{data.skills.join(' / ')}</div>
         </div>

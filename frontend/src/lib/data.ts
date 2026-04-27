@@ -68,7 +68,11 @@ export const DEFAULT_RESUME_DATA: ResumeData = {
     { role: "Frontend Engineer", company: "Riskified", loc: "Tel Aviv", when: "2019 — 2022", bullets: ["Shipped the rules editor and policy explorer used by all tier-1 merchants.", "Drove accessibility audit to WCAG AA compliance across the admin."] },
     { role: "Software Engineer", company: "Cellebrite", loc: "Petah Tikva", when: "2017 — 2019", bullets: ["Built the forensic case-review UI in React + Redux.", "Contributed to the internal component library."] },
   ],
+  education: [
+    { degree: "B.Sc. Computer Science", school: "Tel Aviv University", loc: "Tel Aviv", when: "2013 — 2017" },
+  ],
   skills: ["React","TypeScript","Node.js","GraphQL","Design Systems","Perf","Accessibility","Figma"],
+  links: [],
 };
 
 export const ELEMENTOR_JOB: Job = {

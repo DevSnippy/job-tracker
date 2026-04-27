@@ -38,7 +38,7 @@ export default function TrackerPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
 
   useEffect(() => {
-    api.jobs.list().then(data => setJobs(data as Job[])).catch(() => {});
+    api.jobs.list({ tracked: true }).then(data => setJobs(data as Job[])).catch(() => {});
   }, []);
 
   const byStage = STAGES.map((_, i) => jobs.filter(j => j.stage === i));

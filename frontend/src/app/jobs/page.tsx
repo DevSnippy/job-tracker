@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/AppShell';
 import Topbar from '@/components/Topbar';
@@ -15,19 +15,62 @@ import type { Job, JobStatus } from '@/lib/types';
 
 type ViewMode = 'table' | 'split' | 'grid';
 
+const LEVEL_PATTERNS: [string, RegExp][] = [
+  ['Student / Intern', /student|intern|trainee/i],
+  ['Junior', /junior|jr\.?(?:\s|$)/i],
+  ['Mid', /\bmid\b|\bmiddle\b/i],
+  ['Senior', /senior|sr\.?(?:\s|$)/i],
+  ['Lead', /\blead\b|\bstaff\b|\bprincipal\b/i],
+  ['Manager+', /manager|director|vp\b|head of|c[xt]o\b/i],
+];
+
+function getLevel(role: string): string {
+  for (const [label, re] of LEVEL_PATTERNS) {
+    if (re.test(role)) return label;
+  }
+  return 'Mid';
+}
+
+interface Filters {
+  city: string;
+  remote: string;
+  level: string;
+  category: string;
+}
+
+const EMPTY_FILTERS: Filters = { city: '', remote: '', level: '', category: '' };
+
 export default function JobsPage() {
   const router = useRouter();
-  const [view, setView] = useState<ViewMode>('table');
+  const [view, setView] = useState<ViewMode>('grid');
   const [q, setQ] = useState('');
   const [selected, setSelected] = useState(new Set<string>());
   const [statusFilter, setStatusFilter] = useState<'all' | JobStatus>('all');
   const [pasteOpen, setPasteOpen] = useState(false);
   const [tailorJobId, setTailorJobId] = useState<string | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
-    api.jobs.list().then(data => setJobs(data as Job[])).catch(() => {});
+    api.jobs.list({ discover: true }).then(data => setJobs(data as Job[])).catch(() => {});
   }, []);
+
+  const cityOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const j of jobs) {
+      if (j.loc) counts.set(j.loc, (counts.get(j.loc) ?? 0) + 1);
+    }
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 30).map(([c]) => c);
+  }, [jobs]);
+
+  const categoryOptions = useMemo(() => {
+    const seen = new Set<string>();
+    for (const j of jobs) for (const s of j.stack) seen.add(s);
+    return Array.from(seen).sort();
+  }, [jobs]);
+
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
   const filtered = useMemo(() => {
     let out = jobs;
@@ -36,8 +79,12 @@ export default function JobsPage() {
       out = out.filter(j => j.company.toLowerCase().includes(qq) || j.role.toLowerCase().includes(qq) || j.loc.toLowerCase().includes(qq));
     }
     if (statusFilter !== 'all') out = out.filter(j => j.status === statusFilter);
+    if (filters.city) out = out.filter(j => j.loc === filters.city);
+    if (filters.remote) out = out.filter(j => j.remote === filters.remote);
+    if (filters.level) out = out.filter(j => getLevel(j.role) === filters.level);
+    if (filters.category) out = out.filter(j => j.stack.includes(filters.category));
     return out;
-  }, [q, statusFilter, jobs]);
+  }, [q, statusFilter, jobs, filters]);
 
   const toggle = (id: string) => {
     const s = new Set(selected);
@@ -59,7 +106,6 @@ export default function JobsPage() {
                 </button>
               ))}
             </div>
-            <button className="btn ghost"><Icon name="refresh" /> Sync techmap</button>
             <button className="btn" onClick={() => setPasteOpen(true)}><Icon name="link" /> Paste URL</button>
             <button className="btn primary" onClick={() => openTailor(filtered[0]?.id)}><Icon name="sparkle" /> Tailor resume</button>
           </>
@@ -80,7 +126,28 @@ export default function JobsPage() {
           <div style={{ flex: 1 }} />
           <span className="mono-strong muted">{filtered.length} jobs</span>
           <div className="vsep" />
-          <button className="btn sm ghost"><Icon name="filter" size={12} /> Filters</button>
+          <div style={{ position: 'relative' }}>
+            <button
+              className={`btn sm${activeFilterCount > 0 ? '' : ' ghost'}`}
+              onClick={() => setFiltersOpen(v => !v)}
+            >
+              <Icon name="filter" size={12} /> Filters
+              {activeFilterCount > 0 && (
+                <span style={{ marginLeft: 4, background: 'var(--accent)', color: '#fff', borderRadius: 10, padding: '0 5px', fontSize: 10, fontWeight: 700 }}>
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+            {filtersOpen && (
+              <FilterPanel
+                filters={filters}
+                cities={cityOptions}
+                categories={categoryOptions}
+                onChange={setFilters}
+                onClose={() => setFiltersOpen(false)}
+              />
+            )}
+          </div>
           <button className="btn sm ghost"><Icon name="sortAsc" size={12} /> Sort</button>
           {selected.size > 0 && (
             <>
@@ -229,6 +296,97 @@ function JobsGrid({ jobs, onOpen, onTailor }: { jobs: Job[]; onOpen: (id: string
   );
 }
 
+function FilterPanel({ filters, cities, categories, onChange, onClose }: {
+  filters: Filters;
+  cities: string[];
+  categories: string[];
+  onChange: (f: Filters) => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  const set = (key: keyof Filters, val: string) =>
+    onChange({ ...filters, [key]: filters[key] === val ? '' : val });
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 100,
+        background: 'var(--surface)', border: '1px solid var(--border)',
+        borderRadius: 10, padding: 16, width: 280,
+        boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+      }}
+    >
+      <div className="row" style={{ justifyContent: 'space-between', marginBottom: 12 }}>
+        <span style={{ fontWeight: 600, fontSize: 13 }}>Filters</span>
+        <button className="btn sm ghost" onClick={() => onChange(EMPTY_FILTERS)}>Clear all</button>
+      </div>
+
+      <div className="col" style={{ gap: 14 }}>
+        <div>
+          <div className="section-title" style={{ marginBottom: 6 }}>Remote</div>
+          <div className="row" style={{ gap: 4, flexWrap: 'wrap' }}>
+            {['Remote', 'Hybrid', 'On-site'].map(v => (
+              <button
+                key={v}
+                className={`btn sm${filters.remote === v ? '' : ' ghost'}`}
+                onClick={() => set('remote', v)}
+              >{v}</button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <div className="section-title" style={{ marginBottom: 6 }}>Experience level</div>
+          <div className="row" style={{ gap: 4, flexWrap: 'wrap' }}>
+            {LEVEL_PATTERNS.map(([label]) => (
+              <button
+                key={label}
+                className={`btn sm${filters.level === label ? '' : ' ghost'}`}
+                onClick={() => set('level', label)}
+              >{label}</button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <div className="section-title" style={{ marginBottom: 6 }}>Category</div>
+          <div style={{ maxHeight: 120, overflowY: 'auto', display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {categories.map(c => (
+              <button
+                key={c}
+                className={`btn sm${filters.category === c ? '' : ' ghost'}`}
+                onClick={() => set('category', c)}
+              >{c}</button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <div className="section-title" style={{ marginBottom: 6 }}>City</div>
+          <select
+            className="input"
+            style={{ width: '100%', fontSize: 12 }}
+            value={filters.city}
+            onChange={e => onChange({ ...filters, city: e.target.value })}
+          >
+            <option value="">All cities</option>
+            {cities.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function JobDetailInline({ job, onOpenFull, onTailor }: { job: Job; onOpenFull: () => void; onTailor: () => void }) {
   return (
     <div>
@@ -246,11 +404,14 @@ function JobDetailInline({ job, onOpenFull, onTailor }: { job: Job; onOpenFull: 
         {job.stack.map(t => <span key={t} className="chip chip-accent">{t}</span>)}
       </div>
       <h4 className="section-title" style={{ marginTop: 18 }}>Description</h4>
-      <p className="muted">Senior role owning frontend architecture for a fast-growing product. Partner closely with design and backend to ship the customer-facing console.</p>
+      {job.description
+        ? <p className="muted" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{job.description}</p>
+        : <p className="muted">Open this job to load the description.</p>
+      }
       <div className="row" style={{ marginTop: 18, gap: 8 }}>
         <button className="btn primary" onClick={onTailor}><Icon name="sparkle" size={12} /> Tailor resume</button>
         <button className="btn"><Icon name="star" size={12} /> Save</button>
-        <button className="btn ghost"><Icon name="external" size={12} /> Source</button>
+        <button className="btn ghost" onClick={() => window.open(job.url, '_blank', 'noopener,noreferrer')}><Icon name="external" size={12} /> Source</button>
       </div>
     </div>
   );

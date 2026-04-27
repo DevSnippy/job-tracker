@@ -5,9 +5,8 @@ import Topbar from '@/components/Topbar';
 import Icon from '@/components/ui/Icon';
 
 const SOURCES = [
-  { n: 'techmap (mluggy/techmap)', sub: 'GitHub-backed job feed', on: true },
+  { n: 'techmap (mluggy/techmap)', sub: 'GitHub-backed job feed — syncs daily via Lever', on: true },
   { n: 'LinkedIn Jobs', sub: 'Chrome extension required', on: false },
-  { n: 'Greenhouse boards', sub: 'Direct API pull', on: true },
 ];
 
 const NOTIFICATIONS = [

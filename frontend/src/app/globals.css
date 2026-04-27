@@ -206,3 +206,5 @@ td.company-cell{display:flex !important;align-items:center;gap:8px;font-weight:5
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:grid;place-items:center;z-index:100;}
 
 @keyframes blink{50%{opacity:0;}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:20px;height:20px;border:2.5px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .65s linear infinite;flex-shrink:0;}

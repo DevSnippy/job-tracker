@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import String, Boolean, Integer, Text, JSON
+from sqlalchemy import String, Boolean, Integer, Text, JSON, text
 from typing import AsyncGenerator
 
 DATABASE_URL = "sqlite+aiosqlite:///./jobtracker.db"
@@ -48,6 +48,27 @@ class ResumeModel(Base):
     resume_data: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
+class UserModel(Base):
+    __tablename__ = "users"
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str] = mapped_column(String, default="")
+    email: Mapped[str] = mapped_column(String, default="")
+    phone: Mapped[str] = mapped_column(String, default="")
+    headline: Mapped[str] = mapped_column(String, default="")
+    location: Mapped[str] = mapped_column(String, default="")
+    interested_titles: Mapped[list] = mapped_column(JSON, default=list)
+    preferred_levels: Mapped[list] = mapped_column(JSON, default=list)
+    preferred_tracks: Mapped[list] = mapped_column(JSON, default=list)
+    summary: Mapped[str] = mapped_column(Text, default="")
+    experience: Mapped[list] = mapped_column(JSON, default=list)
+    education: Mapped[list] = mapped_column(JSON, default=list)
+    skills: Mapped[list] = mapped_column(JSON, default=list)
+    linkedin_url: Mapped[str] = mapped_column(String, default="")
+    website_url: Mapped[str] = mapped_column(String, default="")
+    portfolio_url: Mapped[str] = mapped_column(String, default="")
+    cover_letter: Mapped[str] = mapped_column(Text, default="")
+
+
 class WebhookModel(Base):
     __tablename__ = "webhooks"
     id: Mapped[str] = mapped_column(String, primary_key=True)
@@ -62,6 +83,25 @@ class WebhookModel(Base):
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Add columns that may not exist in older databases
+        result = await conn.execute(text("PRAGMA table_info(users)"))
+        existing = {row[1] for row in result.fetchall()}
+        new_cols = [
+            ("summary",    "TEXT DEFAULT ''"),
+            ("experience", "TEXT DEFAULT '[]'"),
+            ("skills",     "TEXT DEFAULT '[]'"),
+            ("phone",      "TEXT DEFAULT ''"),
+            ("education",        "TEXT DEFAULT '[]'"),
+            ("preferred_levels", "TEXT DEFAULT '[]'"),
+            ("preferred_tracks", "TEXT DEFAULT '[]'"),
+            ("linkedin_url",  "TEXT DEFAULT ''"),
+            ("website_url",   "TEXT DEFAULT ''"),
+            ("portfolio_url", "TEXT DEFAULT ''"),
+            ("cover_letter",  "TEXT DEFAULT ''"),
+        ]
+        for col, defn in new_cols:
+            if col not in existing:
+                await conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {defn}"))
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

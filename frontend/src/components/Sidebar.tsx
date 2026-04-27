@@ -1,6 +1,8 @@
 'use client';
 import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import Icon from './ui/Icon';
+import { api } from '@/lib/api';
 
 const NAV = [
   { group: "Workspace", items: [
@@ -27,6 +29,19 @@ interface SidebarProps {
 export default function Sidebar({ onThemeToggle, theme }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+
+  useEffect(() => {
+    api.user.get().then(u => {
+      setName(u.name);
+      setEmail(u.email);
+    }).catch(() => {});
+  }, []);
+
+  const initials = name
+    ? name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()
+    : '?';
 
   const isActive = (href: string) => {
     if (href === '/jobs') return pathname === '/jobs' || pathname.startsWith('/jobs/');
@@ -68,10 +83,10 @@ export default function Sidebar({ onThemeToggle, theme }: SidebarProps) {
       ))}
 
       <div className="sidebar-footer">
-        <div className="avatar">YL</div>
+        <div className="avatar">{initials}</div>
         <div className="user-block">
-          <div className="name">Yonatan Levi</div>
-          <div className="mail">yonatan@pm.me</div>
+          <div className="name">{name || '—'}</div>
+          <div className="mail">{email || '—'}</div>
         </div>
         {onThemeToggle && (
           <button className="icon-btn" title="Toggle theme" onClick={onThemeToggle}>
